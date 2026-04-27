@@ -1,7 +1,7 @@
 # Deploying to Firebase Hosting
 
-This project is built with **TanStack Start** (SSR-capable, default target Cloudflare Workers).
-Firebase Hosting only serves static files, so we deploy the prerendered/static build.
+This project is built with **TanStack Start**. Firebase Hosting only serves
+static files, so we deploy the prerendered/static build output.
 
 ## One-time setup
 
@@ -15,18 +15,23 @@ firebase use --add
 ## Build & deploy
 
 ```bash
-bun install
-bun run build
-# The build outputs to .output/public (TanStack Start default).
-# Copy/symlink it as `dist` for firebase.json, OR change firebase.json's
-# "public" to ".output/public".
+bun install      # or: npm install
+bun run build    # or: npm run build
 firebase deploy --only hosting
 ```
 
-If `bun run build` produces `.output/public` instead of `dist`, either:
+`firebase.json` is already set to serve from `.output/public` (TanStack Start's
+default build directory), so no copy step is needed.
 
-1. Change `firebase.json` -> `"public": ".output/public"`, or
-2. Add a postbuild step: `cp -r .output/public dist`
+### If `bun install` hangs
+
+Use npm instead:
+
+```bash
+npm install
+npm run build
+firebase deploy --only hosting
+```
 
 ## Notes
 

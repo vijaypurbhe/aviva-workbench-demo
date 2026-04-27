@@ -226,6 +226,22 @@ export function Workbench() {
                     <span className="text-slds-ink-soft">·</span>
                     <span className="text-slds-ink-soft">{q.ago}</span>
                   </div>
+                  {q.uc.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                      {q.uc.map((u) => (
+                        <span
+                          key={u}
+                          className={[
+                            "rounded border px-1 py-[1px] text-[9px] font-bold uppercase tracking-wider",
+                            ucBadgeClass(u),
+                            activeUC === u ? "ring-1 ring-offset-0 ring-slds-blue" : "",
+                          ].join(" ")}
+                        >
+                          {u.toUpperCase()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </li>
               );
             })}

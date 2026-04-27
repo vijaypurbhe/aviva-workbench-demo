@@ -203,7 +203,7 @@ export const LEADS: Lead[] = [
   },
 ];
 
-export const QUEUE: {
+export type QueueItem = {
   id: string;
   name: string;
   meta: string;
@@ -212,14 +212,18 @@ export const QUEUE: {
   status: string;
   ago: string;
   hot?: boolean;
-}[] = [
-  { id: "sophie", name: "Sophie Tremblay", meta: "Home Insurance · QC", source: "ClicAssure", score: 93, status: "New", ago: "8 min ago", hot: true },
-  { id: "james", name: "James Okonkwo", meta: "Auto Insurance · ON", source: "Online Form", score: 87, status: "Working", ago: "22 min ago" },
-  { id: "raj", name: "Raj Mehta", meta: "Home + Auto Bundle · ON", source: "Marketo", score: 81, status: "Working", ago: "32 min ago" },
-  { id: "marie", name: "Marie-Hélène Roy", meta: "Home + Auto Bundle · QC", source: "Marketo", score: 71, status: "Callback", ago: "1 h ago" },
-  { id: "david", name: "David Chen", meta: "Condo Insurance · ON", source: "GW AppEvents", score: 65, status: "New", ago: "2 h ago" },
-  { id: "qc8821", name: "GW Quote #QC-8821", meta: "Condo Insurance · QC", source: "Broker", score: 76, status: "Working", ago: "1 h ago" },
-  { id: "priya", name: "Priya Sharma", meta: "Tenant Insurance · ON", source: "Online Form", score: 58, status: "Contacted", ago: "3 h ago" },
-  { id: "francois", name: "François Lavoie", meta: "PPV Insurance · QC", source: "ClicAssure", score: 42, status: "New", ago: "4 h ago" },
-  { id: "angela", name: "Angela Petrov", meta: "Home Insurance · BC", source: "Online Form", score: 38, status: "Callback", ago: "5 h ago" },
+  /** Use-case tags this lead belongs to (uc1..uc5). */
+  uc: string[];
+};
+
+export const QUEUE: QueueItem[] = [
+  { id: "sophie", name: "Sophie Tremblay", meta: "Home Insurance · QC", source: "ClicAssure", score: 93, status: "New", ago: "8 min ago", hot: true, uc: ["uc1", "uc4", "uc5"] },
+  { id: "james", name: "James Okonkwo", meta: "Auto Insurance · ON", source: "Online Form", score: 87, status: "Working", ago: "22 min ago", uc: ["uc3"] },
+  { id: "raj", name: "Raj Mehta", meta: "Home + Auto Bundle · ON", source: "Marketo", score: 81, status: "Working", ago: "32 min ago", uc: ["uc3", "uc4", "uc5"] },
+  { id: "marie", name: "Marie-Hélène Roy", meta: "Home + Auto Bundle · QC", source: "Marketo", score: 71, status: "Callback", ago: "1 h ago", uc: ["uc2", "uc5"] },
+  { id: "david", name: "David Chen", meta: "Condo Insurance · ON", source: "GW AppEvents", score: 65, status: "New", ago: "2 h ago", uc: ["uc3"] },
+  { id: "qc8821", name: "GW Quote #QC-8821", meta: "Condo Insurance · QC", source: "Broker", score: 76, status: "Working", ago: "1 h ago", uc: ["uc2"] },
+  { id: "priya", name: "Priya Sharma", meta: "Tenant Insurance · ON", source: "Online Form", score: 58, status: "Contacted", ago: "3 h ago", uc: ["uc3", "uc5"] },
+  { id: "francois", name: "François Lavoie", meta: "PPV Insurance · QC", source: "ClicAssure", score: 42, status: "New", ago: "4 h ago", uc: ["uc1", "uc2"] },
+  { id: "angela", name: "Angela Petrov", meta: "Home Insurance · BC", source: "Online Form", score: 38, status: "Callback", ago: "5 h ago", uc: ["uc3"] },
 ];

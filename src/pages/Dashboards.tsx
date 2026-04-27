@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { ConsoleChrome } from "@/components/console/ConsoleChrome";
 import {
   Bar,
@@ -11,16 +10,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-export const Route = createFileRoute("/dashboards")({
-  head: () => ({
-    meta: [
-      { title: "Dashboards — Aviva Service Console" },
-      { name: "description", content: "Operational dashboards for the Aviva Canada workbench." },
-    ],
-  }),
-  component: DashboardsPage,
-});
 
 const QUOTES = [
   { m: "Nov", v: 720 },
@@ -39,7 +28,7 @@ const BIND = [
   { m: "Apr", v: 38 },
 ];
 
-function DashboardsPage() {
+export default function DashboardsPage() {
   return (
     <ConsoleChrome>
       <div className="grid grid-cols-2 gap-4 bg-slds-neutral-bg p-4">

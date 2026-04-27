@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useLocation } from "react-router-dom";
 import { Bell, HelpCircle, Search, Settings, Cloud } from "lucide-react";
 
 const NAV = [
@@ -10,7 +10,7 @@ const NAV = [
 ] as const;
 
 export function ConsoleChrome({ children }: { children: React.ReactNode }) {
-  const path = useRouterState({ select: (s) => s.location.pathname });
+  const path = useLocation().pathname;
 
   return (
     <div className="flex min-h-screen flex-col bg-slds-neutral-bg">

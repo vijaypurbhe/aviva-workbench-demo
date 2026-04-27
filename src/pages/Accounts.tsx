@@ -1,15 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { ConsoleChrome } from "@/components/console/ConsoleChrome";
-
-export const Route = createFileRoute("/accounts")({
-  head: () => ({
-    meta: [
-      { title: "Accounts — Aviva Service Console" },
-      { name: "description", content: "Aviva Canada customer accounts." },
-    ],
-  }),
-  component: AccountsPage,
-});
 
 const ACCOUNTS = [
   { name: "Tremblay Household", city: "Montréal, QC", policies: 1, ltv: "$1,284", segment: "Home" },
@@ -22,7 +11,7 @@ const ACCOUNTS = [
   { name: "Petrov, Angela", city: "Vancouver, BC", policies: 1, ltv: "$1,420", segment: "Home" },
 ];
 
-function AccountsPage() {
+export default function AccountsPage() {
   return (
     <ConsoleChrome>
       <div className="bg-slds-neutral-bg p-4">

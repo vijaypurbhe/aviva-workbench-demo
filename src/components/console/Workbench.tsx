@@ -65,10 +65,9 @@ export function Workbench() {
       if (filter === "ON" && !q.meta.includes("ON")) return false;
       if (filter === "My Queue" && !["sophie", "raj", "qc8821"].includes(q.id)) return false;
       if (search && !q.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (activeUC && !q.uc.includes(activeUC)) return false;
       return true;
     });
-  }, [filter, search, activeUC]);
+  }, [filter, search]);
 
   const openLead = (id: string) => {
     if (!LEADS.find((l) => l.id === id)) {
@@ -152,11 +151,8 @@ export function Workbench() {
         </button>
       </div>
 
-      {/* Use-case spotlight strip */}
-      <UseCaseSpotlightStrip activeId={activeUC} onChange={setActiveUC} />
-
       {/* 3-pane */}
-      <div className="grid h-[calc(100vh-15rem)] grid-cols-[280px_1fr_320px]">
+      <div className="grid h-[calc(100vh-12rem)] grid-cols-[280px_1fr_320px]">
         {/* Left queue */}
         <aside className="overflow-y-auto border-r border-slds-border bg-white">
           <div className="border-b border-slds-border px-3 py-3">
@@ -217,22 +213,6 @@ export function Workbench() {
                     <span className="text-slds-ink-soft">·</span>
                     <span className="text-slds-ink-soft">{q.ago}</span>
                   </div>
-                  {q.uc.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                      {q.uc.map((u) => (
-                        <span
-                          key={u}
-                          className={[
-                            "rounded border px-1 py-[1px] text-[9px] font-bold uppercase tracking-wider",
-                            ucBadgeClass(u),
-                            activeUC === u ? "ring-1 ring-offset-0 ring-slds-blue" : "",
-                          ].join(" ")}
-                        >
-                          {u.toUpperCase()}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </li>
               );
             })}
@@ -383,11 +363,6 @@ export function Workbench() {
 
         {/* Right rail */}
         <aside className="overflow-y-auto border-l border-slds-border bg-slds-neutral-bg p-3">
-          {activeUseCase && (
-            <div className="mb-3">
-              <UseCaseRailPanel uc={activeUseCase} onLog={appendHistory} />
-            </div>
-          )}
           {/* Einstein */}
           <div className="overflow-hidden rounded border border-slds-border bg-white">
             <div className="flex items-center justify-between border-b border-slds-border px-3 py-2">

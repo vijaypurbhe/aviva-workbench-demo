@@ -161,8 +161,11 @@ export function Workbench() {
         </button>
       </div>
 
+      {/* Use-case spotlight strip */}
+      <UseCaseSpotlightStrip activeId={activeUC} onChange={setActiveUC} />
+
       {/* 3-pane */}
-      <div className="grid h-[calc(100vh-12rem)] grid-cols-[280px_1fr_320px]">
+      <div className="grid h-[calc(100vh-15rem)] grid-cols-[280px_1fr_320px]">
         {/* Left queue */}
         <aside className="overflow-y-auto border-r border-slds-border bg-white">
           <div className="border-b border-slds-border px-3 py-3">

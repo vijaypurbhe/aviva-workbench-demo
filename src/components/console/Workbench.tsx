@@ -74,9 +74,10 @@ export function Workbench() {
       if (filter === "ON" && !q.meta.includes("ON")) return false;
       if (filter === "My Queue" && !["sophie", "raj", "qc8821"].includes(q.id)) return false;
       if (search && !q.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (activeUC && !q.uc.includes(activeUC)) return false;
       return true;
     });
-  }, [filter, search]);
+  }, [filter, search, activeUC]);
 
   const openLead = (id: string) => {
     if (!LEADS.find((l) => l.id === id)) {

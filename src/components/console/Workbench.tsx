@@ -392,6 +392,11 @@ export function Workbench() {
 
         {/* Right rail */}
         <aside className="overflow-y-auto border-l border-slds-border bg-slds-neutral-bg p-3">
+          {activeUseCase && (
+            <div className="mb-3">
+              <UseCaseRailPanel uc={activeUseCase} onLog={appendHistory} />
+            </div>
+          )}
           {/* Einstein */}
           <div className="overflow-hidden rounded border border-slds-border bg-white">
             <div className="flex items-center justify-between border-b border-slds-border px-3 py-2">

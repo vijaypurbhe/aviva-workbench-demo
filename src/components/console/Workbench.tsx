@@ -1,12 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { LEADS, QUEUE, type Lead } from "@/data/mock";
-import { USE_CASES } from "@/data/useCases";
-import {
-  UseCaseSpotlightStrip,
-  UseCaseRailPanel,
-  ucBadgeClass,
-  type UseCaseId,
-} from "@/components/console/UseCaseSpotlight";
 import { toast } from "sonner";
 import {
   Search,

@@ -52,6 +52,8 @@ export function Workbench() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [docOpen, setDocOpen] = useState<{ name: string; tag: string } | null>(null);
   const [extraHistory, setExtraHistory] = useState<Record<string, Lead["history"]>>({});
+  const [activeUC, setActiveUC] = useState<UseCaseId>(null);
+  const activeUseCase = USE_CASES.find((u) => u.id === activeUC) ?? null;
 
   const lead = LEADS.find((l) => l.id === activeTab) ?? LEADS[0];
 

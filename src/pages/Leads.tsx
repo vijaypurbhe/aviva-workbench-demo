@@ -1,19 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { ConsoleChrome } from "@/components/console/ConsoleChrome";
 import { QUEUE } from "@/data/mock";
 import { Search, Filter, Download, Plus } from "lucide-react";
 
-export const Route = createFileRoute("/leads")({
-  head: () => ({
-    meta: [
-      { title: "Leads — Aviva Service Console" },
-      { name: "description", content: "All Aviva Canada leads with Einstein scoring." },
-    ],
-  }),
-  component: LeadsPage,
-});
-
-function LeadsPage() {
+export default function LeadsPage() {
   return (
     <ConsoleChrome>
       <div className="bg-slds-neutral-bg p-4">

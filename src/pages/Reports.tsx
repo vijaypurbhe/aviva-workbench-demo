@@ -1,16 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { ConsoleChrome } from "@/components/console/ConsoleChrome";
 import { TrendingUp, Target, Sparkles, MessageSquare } from "lucide-react";
-
-export const Route = createFileRoute("/reports")({
-  head: () => ({
-    meta: [
-      { title: "Reports — Aviva Service Console" },
-      { name: "description", content: "Operational KPIs for Aviva Canada agents." },
-    ],
-  }),
-  component: ReportsPage,
-});
 
 const TILES = [
   { label: "Quotes by Province (QTD)", value: "1,284", delta: "+12.4%", icon: TrendingUp, tone: "emerald" },
@@ -26,7 +15,7 @@ const TABLE = [
   { region: "Alberta", quotes: 100, bind: "29%", premium: "$132K" },
 ];
 
-function ReportsPage() {
+export default function ReportsPage() {
   return (
     <ConsoleChrome>
       <div className="space-y-4 bg-slds-neutral-bg p-4">

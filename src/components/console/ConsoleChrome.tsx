@@ -7,7 +7,6 @@ const NAV = [
   { label: "Accounts", to: "/accounts" },
   { label: "Reports", to: "/reports" },
   { label: "Dashboards", to: "/dashboards" },
-  { label: "Use Cases", to: "/use-cases" },
 ] as const;
 
 export function ConsoleChrome({ children }: { children: React.ReactNode }) {

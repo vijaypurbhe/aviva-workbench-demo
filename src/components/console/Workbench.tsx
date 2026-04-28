@@ -115,31 +115,80 @@ export function Workbench() {
   };
 
   const startCall = () => {
-    setCallState("on-call");
+    if (callState !== "idle") return;
     setCallSeconds(0);
-    toast.success(`Five9 — dialing ${lead.phone}`);
+    setCallState("ringing");
+    toast.message("Five9 — dialing", { description: lead.phone });
+    // simulate ring → connect after ~2.4s
+    window.setTimeout(() => {
+      setCallState((curr) => (curr === "ringing" ? "on-call" : curr));
+    }, 2400);
   };
   const endCall = () => {
     if (callState === "idle") return;
+    const wasRinging = callState === "ringing";
+    const duration = callSeconds;
+    const outcome: NonNullable<CallSummary>["outcome"] =
+      wasRinging ? "No Answer" : duration > 8 ? "Connected" : "Voicemail";
     setCallState("idle");
+    setCallSeconds(0);
+    setCallSummary({ duration, outcome });
     appendHistory({
       icon: "call",
-      title: `Outbound Call — ${callSeconds > 5 ? "Connected" : "No Answer"}`,
-      sub: `Agent: Sarah Kim · Duration: ${formatDuration(callSeconds)} · Five9`,
+      title: `Outbound Call — ${outcome}`,
+      sub: `Agent: Sarah Kim · Duration: ${formatDuration(duration)} · Five9`,
       when: "Just now",
     });
-    setCallSeconds(0);
-    toast("Call ended", { description: "Logged to interaction history." });
   };
 
-  const sendSms = (template: string) => {
-    appendHistory({
-      icon: "sms",
-      title: `Outbound SMS — "${template}"`,
-      sub: "Twilio · Delivered",
-      when: "Just now",
+  const openSms = (template: string) => {
+    const firstName = lead.name.split(" ")[0];
+    const body = (TEMPLATE_BODIES[template] ?? TEMPLATE_BODIES["Custom SMS"])
+      .replace("{firstName}", firstName)
+      .replace("{policyId}", lead.policyId)
+      .replace("{premium}", lead.quote.annualPremium);
+    setSms({ template, body, phase: "compose" });
+  };
+
+  const sendSmsNow = () => {
+    if (!sms) return;
+    setSms({ ...sms, phase: "sending" });
+    const messageId = "SM" + Math.random().toString(36).slice(2, 12).toUpperCase();
+    window.setTimeout(() => {
+      setSms((s) => (s ? { ...s, phase: "delivered", messageId } : s));
+      appendHistory({
+        icon: "sms",
+        title: `Outbound SMS — "${sms.template}"`,
+        sub: `Twilio · Delivered · ${messageId}`,
+        when: "Just now",
+      });
+    }, 1400);
+  };
+
+  const startConvert = () => {
+    setConvertPhase("review");
+    setConvertStep(0);
+    setConvertOpen(true);
+  };
+
+  const runBind = () => {
+    setConvertPhase("binding");
+    setConvertStep(0);
+    const stepDelays = [700, 900, 800, 700];
+    let acc = 0;
+    stepDelays.forEach((d, i) => {
+      acc += d;
+      window.setTimeout(() => setConvertStep(i + 1), acc);
     });
-    toast.success("SMS sent via Twilio", { description: template });
+    window.setTimeout(() => {
+      setConvertPhase("done");
+      appendHistory({
+        icon: "doc",
+        title: "Lead Converted → Opportunity",
+        sub: `Bound to Guidewire ${lead.policyId} · ${lead.quote.annualPremium}`,
+        when: "Just now",
+      });
+    }, acc + 400);
   };
 
   const appendHistory = (entry: Lead["history"][number]) => {

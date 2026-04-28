@@ -770,7 +770,7 @@ export function Workbench() {
               <Row k="Contact" v={`${lead.name} · ${lead.phone}`} />
               <Row k="Duration" v={formatDuration(callSummary.duration)} />
               <Row k="Outcome" v={callSummary.outcome} />
-              <Row k="Recording" v="REC-" + Math.random().toString(36).slice(2, 9).toUpperCase() />
+              <Row k="Recording" v={"REC-" + Math.random().toString(36).slice(2, 9).toUpperCase()} />
               <div className="pt-1">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slds-ink-soft">Agent notes</div>
                 <textarea

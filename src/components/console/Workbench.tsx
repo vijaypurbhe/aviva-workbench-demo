@@ -484,7 +484,7 @@ export function Workbench() {
                   </div>
                   <p className="mt-2 text-[11px] leading-snug text-slds-ink-soft">{r.body}</p>
                   <button
-                    onClick={() => (r.cta === "Call Now" ? startCall() : toast.success(r.cta + " sent"))}
+                    onClick={() => (r.cta === "Call Now" ? startCall() : openSms("Bundle Offer — Home+Auto"))}
                     className={[
                       "mt-2 inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] font-semibold",
                       r.tone === "primary"

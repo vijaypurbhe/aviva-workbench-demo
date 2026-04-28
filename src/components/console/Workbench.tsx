@@ -67,8 +67,12 @@ export function Workbench() {
   const [search, setSearch] = useState("");
   const [callState, setCallState] = useState<CallState>("idle");
   const [callSeconds, setCallSeconds] = useState(0);
+  const [callSummary, setCallSummary] = useState<CallSummary>(null);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [convertPhase, setConvertPhase] = useState<ConvertPhase>("review");
+  const [convertStep, setConvertStep] = useState(0);
   const [docOpen, setDocOpen] = useState<{ name: string; tag: string } | null>(null);
+  const [sms, setSms] = useState<SmsCompose | null>(null);
   const [extraHistory, setExtraHistory] = useState<Record<string, Lead["history"]>>({});
 
   const lead = LEADS.find((l) => l.id === activeTab) ?? LEADS[0];

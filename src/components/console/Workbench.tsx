@@ -33,6 +33,31 @@ import {
 
 type CallState = "idle" | "ringing" | "on-call" | "hold";
 
+type SmsCompose = {
+  template: string;
+  body: string;
+  phase: "compose" | "sending" | "delivered";
+  messageId?: string;
+};
+
+type ConvertPhase = "review" | "binding" | "done";
+
+type CallSummary = {
+  duration: number;
+  outcome: "Connected" | "No Answer" | "Voicemail";
+} | null;
+
+const TEMPLATE_BODIES: Record<string, string> = {
+  "Quote Expiry Reminder":
+    "Hi {firstName}, this is Sarah from Aviva Canada. Your home insurance quote {policyId} expires in 13 days at the rate of {premium}/yr. Reply YES to lock in this rate or call us at 1-800-555-0199. STOP to opt out.",
+  "Callback Confirmation":
+    "Hi {firstName}, confirming your callback with Aviva for tomorrow at 2:00 PM EST regarding quote {policyId}. Reply 1 to confirm, 2 to reschedule. STOP to opt out.",
+  "Bundle Offer — Home+Auto":
+    "Hi {firstName}, you qualify for our Home+Auto bundle: save $340/yr on top of quote {policyId}. Reply BUNDLE for details or call 1-800-555-0199. STOP to opt out.",
+  "Custom SMS":
+    "Hi {firstName}, this is Sarah from Aviva Canada following up on your home insurance quote {policyId}. Let me know if you have any questions. STOP to opt out.",
+};
+
 const FILTERS = ["All", "My Queue", "QC", "ON"] as const;
 
 export function Workbench() {
@@ -42,8 +67,12 @@ export function Workbench() {
   const [search, setSearch] = useState("");
   const [callState, setCallState] = useState<CallState>("idle");
   const [callSeconds, setCallSeconds] = useState(0);
+  const [callSummary, setCallSummary] = useState<CallSummary>(null);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [convertPhase, setConvertPhase] = useState<ConvertPhase>("review");
+  const [convertStep, setConvertStep] = useState(0);
   const [docOpen, setDocOpen] = useState<{ name: string; tag: string } | null>(null);
+  const [sms, setSms] = useState<SmsCompose | null>(null);
   const [extraHistory, setExtraHistory] = useState<Record<string, Lead["history"]>>({});
 
   const lead = LEADS.find((l) => l.id === activeTab) ?? LEADS[0];
@@ -86,31 +115,80 @@ export function Workbench() {
   };
 
   const startCall = () => {
-    setCallState("on-call");
+    if (callState !== "idle") return;
     setCallSeconds(0);
-    toast.success(`Five9 — dialing ${lead.phone}`);
+    setCallState("ringing");
+    toast.message("Five9 — dialing", { description: lead.phone });
+    // simulate ring → connect after ~2.4s
+    window.setTimeout(() => {
+      setCallState((curr) => (curr === "ringing" ? "on-call" : curr));
+    }, 2400);
   };
   const endCall = () => {
     if (callState === "idle") return;
+    const wasRinging = callState === "ringing";
+    const duration = callSeconds;
+    const outcome: NonNullable<CallSummary>["outcome"] =
+      wasRinging ? "No Answer" : duration > 8 ? "Connected" : "Voicemail";
     setCallState("idle");
+    setCallSeconds(0);
+    setCallSummary({ duration, outcome });
     appendHistory({
       icon: "call",
-      title: `Outbound Call — ${callSeconds > 5 ? "Connected" : "No Answer"}`,
-      sub: `Agent: Sarah Kim · Duration: ${formatDuration(callSeconds)} · Five9`,
+      title: `Outbound Call — ${outcome}`,
+      sub: `Agent: Sarah Kim · Duration: ${formatDuration(duration)} · Five9`,
       when: "Just now",
     });
-    setCallSeconds(0);
-    toast("Call ended", { description: "Logged to interaction history." });
   };
 
-  const sendSms = (template: string) => {
-    appendHistory({
-      icon: "sms",
-      title: `Outbound SMS — "${template}"`,
-      sub: "Twilio · Delivered",
-      when: "Just now",
+  const openSms = (template: string) => {
+    const firstName = lead.name.split(" ")[0];
+    const body = (TEMPLATE_BODIES[template] ?? TEMPLATE_BODIES["Custom SMS"])
+      .replace("{firstName}", firstName)
+      .replace("{policyId}", lead.policyId)
+      .replace("{premium}", lead.quote.annualPremium);
+    setSms({ template, body, phase: "compose" });
+  };
+
+  const sendSmsNow = () => {
+    if (!sms) return;
+    setSms({ ...sms, phase: "sending" });
+    const messageId = "SM" + Math.random().toString(36).slice(2, 12).toUpperCase();
+    window.setTimeout(() => {
+      setSms((s) => (s ? { ...s, phase: "delivered", messageId } : s));
+      appendHistory({
+        icon: "sms",
+        title: `Outbound SMS — "${sms.template}"`,
+        sub: `Twilio · Delivered · ${messageId}`,
+        when: "Just now",
+      });
+    }, 1400);
+  };
+
+  const startConvert = () => {
+    setConvertPhase("review");
+    setConvertStep(0);
+    setConvertOpen(true);
+  };
+
+  const runBind = () => {
+    setConvertPhase("binding");
+    setConvertStep(0);
+    const stepDelays = [700, 900, 800, 700];
+    let acc = 0;
+    stepDelays.forEach((d, i) => {
+      acc += d;
+      window.setTimeout(() => setConvertStep(i + 1), acc);
     });
-    toast.success("SMS sent via Twilio", { description: template });
+    window.setTimeout(() => {
+      setConvertPhase("done");
+      appendHistory({
+        icon: "quote",
+        title: "Lead Converted → Opportunity",
+        sub: `Bound to Guidewire ${lead.policyId} · ${lead.quote.annualPremium}`,
+        when: "Just now",
+      });
+    }, acc + 400);
   };
 
   const appendHistory = (entry: Lead["history"][number]) => {
@@ -239,7 +317,7 @@ export function Workbench() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <ActionBtn tone="hot" icon={<MessageSquare className="h-3.5 w-3.5" />} onClick={() => sendSms("Custom SMS")}>
+                <ActionBtn tone="hot" icon={<MessageSquare className="h-3.5 w-3.5" />} onClick={() => openSms("Custom SMS")}>
                   Send SMS
                 </ActionBtn>
                 <ActionBtn tone="primary" icon={<Phone className="h-3.5 w-3.5" />} onClick={startCall}>
@@ -248,7 +326,7 @@ export function Workbench() {
                 <ActionBtn tone="ghost" icon={<Activity className="h-3.5 w-3.5" />} onClick={() => toast("Activity logged")}>
                   Log Activity
                 </ActionBtn>
-                <ActionBtn tone="ghost" icon={<CheckCircle2 className="h-3.5 w-3.5" />} onClick={() => setConvertOpen(true)}>
+                <ActionBtn tone="ghost" icon={<CheckCircle2 className="h-3.5 w-3.5" />} onClick={startConvert}>
                   Convert
                 </ActionBtn>
               </div>
@@ -295,8 +373,14 @@ export function Workbench() {
                 <span className="font-semibold">CTI Adapter — Sarah Kim (Agent)</span>
               </div>
               <span className="flex items-center gap-1.5 text-[11px]">
-                <span className={`h-2 w-2 rounded-full ${callState === "on-call" ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
-                {callState === "on-call" ? `On Call · ${formatDuration(callSeconds)}` : callState === "hold" ? "On Hold" : "Ready"}
+                <span className={`h-2 w-2 rounded-full ${callState === "on-call" ? "bg-amber-400 animate-pulse" : callState === "ringing" ? "bg-sky-400 animate-pulse" : "bg-emerald-400"}`} />
+                {callState === "on-call"
+                  ? `On Call · ${formatDuration(callSeconds)}`
+                  : callState === "ringing"
+                  ? "Ringing…"
+                  : callState === "hold"
+                  ? "On Hold"
+                  : "Ready"}
               </span>
             </div>
             <div className="bg-[oklch(0.22_0.03_250)] px-4 py-5 text-white">
@@ -400,7 +484,7 @@ export function Workbench() {
                   </div>
                   <p className="mt-2 text-[11px] leading-snug text-slds-ink-soft">{r.body}</p>
                   <button
-                    onClick={() => (r.cta === "Call Now" ? startCall() : toast.success(r.cta + " sent"))}
+                    onClick={() => (r.cta === "Call Now" ? startCall() : openSms("Bundle Offer — Home+Auto"))}
                     className={[
                       "mt-2 inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] font-semibold",
                       r.tone === "primary"
@@ -441,7 +525,7 @@ export function Workbench() {
                     {t.label}
                   </div>
                   <button
-                    onClick={() => sendSms(t.label)}
+                    onClick={() => openSms(t.label)}
                     className="inline-flex items-center gap-1 rounded bg-slds-blue px-2 py-0.5 text-[11px] font-semibold text-white hover:brightness-110"
                   >
                     <Send className="h-3 w-3" /> Send
@@ -487,37 +571,231 @@ export function Workbench() {
         </aside>
       </div>
 
-      {/* Convert modal */}
-      <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
+      {/* Convert modal — multi-phase */}
+      <Dialog
+        open={convertOpen}
+        onOpenChange={(o) => {
+          if (!o && convertPhase === "binding") return; // block close mid-bind
+          setConvertOpen(o);
+          if (!o) {
+            setConvertPhase("review");
+            setConvertStep(0);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Convert Lead to Opportunity</DialogTitle>
+            <DialogTitle>
+              {convertPhase === "review" && "Convert Lead to Opportunity"}
+              {convertPhase === "binding" && "Binding policy in Guidewire…"}
+              {convertPhase === "done" && "Opportunity created"}
+            </DialogTitle>
             <DialogDescription>
-              {lead.name} will be converted into a Salesforce Opportunity and bound to a Guidewire policy.
+              {convertPhase === "review" &&
+                `${lead.name} will be converted into a Salesforce Opportunity and bound to a Guidewire policy.`}
+              {convertPhase === "binding" &&
+                "Please keep this window open while we sync Salesforce, Guidewire, and underwriting."}
+              {convertPhase === "done" &&
+                `Policy ${lead.policyId} is now active. Confirmation email queued to ${lead.email}.`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 rounded border border-slds-border bg-slds-neutral-bg p-3 text-[12px]">
-            <Row k="Account" v={lead.name} />
-            <Row k="Opportunity Name" v={`${lead.name} — ${lead.product}`} />
-            <Row k="Guidewire Policy" v={lead.policyId} />
-            <Row k="Annual Premium" v={lead.quote.annualPremium} />
-            <Row k="Stage" v="Qualified → Quoted → Bind" />
-          </div>
+
+          {convertPhase === "review" && (
+            <div className="space-y-2 rounded border border-slds-border bg-slds-neutral-bg p-3 text-[12px]">
+              <Row k="Account" v={lead.name} />
+              <Row k="Opportunity Name" v={`${lead.name} — ${lead.product}`} />
+              <Row k="Guidewire Policy" v={lead.policyId} />
+              <Row k="Annual Premium" v={lead.quote.annualPremium} />
+              <Row k="Underwriter" v={lead.quote.underwriter} />
+              <Row k="Stage" v="Qualified → Quoted → Bind" />
+            </div>
+          )}
+
+          {(convertPhase === "binding" || convertPhase === "done") && (
+            <ol className="space-y-2 rounded border border-slds-border bg-white p-3 text-[12px]">
+              {[
+                "Validating CASL consent & PII",
+                "Creating Salesforce Opportunity",
+                "Binding policy in Guidewire PolicyCenter",
+                "Issuing welcome packet via Twilio + Email",
+              ].map((label, i) => {
+                const reached = convertPhase === "done" || i < convertStep;
+                const active = convertPhase === "binding" && i === convertStep;
+                return (
+                  <li key={label} className="flex items-center gap-2.5">
+                    <span
+                      className={[
+                        "grid h-5 w-5 place-items-center rounded-full text-[10px] font-bold",
+                        reached
+                          ? "bg-emerald-500 text-white"
+                          : active
+                          ? "bg-slds-blue text-white animate-pulse"
+                          : "bg-slds-border text-slds-ink-soft",
+                      ].join(" ")}
+                    >
+                      {reached ? "✓" : i + 1}
+                    </span>
+                    <span className={reached ? "text-slds-ink" : active ? "text-slds-ink font-semibold" : "text-slds-ink-soft"}>
+                      {label}
+                    </span>
+                    {active && <span className="ml-auto text-[10px] text-slds-ink-soft">working…</span>}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+
           <DialogFooter>
-            <button
-              className="rounded border border-slds-border bg-white px-3 py-1.5 text-[12px] font-semibold text-slds-ink hover:bg-slds-neutral-bg"
-              onClick={() => setConvertOpen(false)}
-            >
-              Cancel
-            </button>
+            {convertPhase === "review" && (
+              <>
+                <button
+                  className="rounded border border-slds-border bg-white px-3 py-1.5 text-[12px] font-semibold text-slds-ink hover:bg-slds-neutral-bg"
+                  onClick={() => setConvertOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="rounded bg-slds-blue px-3 py-1.5 text-[12px] font-semibold text-white hover:brightness-110"
+                  onClick={runBind}
+                >
+                  Convert & Bind
+                </button>
+              </>
+            )}
+            {convertPhase === "done" && (
+              <button
+                className="rounded bg-slds-blue px-3 py-1.5 text-[12px] font-semibold text-white hover:brightness-110"
+                onClick={() => setConvertOpen(false)}
+              >
+                Done
+              </button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* SMS Compose modal */}
+      <Dialog open={!!sms} onOpenChange={(o) => !o && sms?.phase !== "sending" && setSms(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-slds-hot" />
+              {sms?.phase === "delivered" ? "SMS Delivered" : "Compose SMS via Twilio"}
+            </DialogTitle>
+            <DialogDescription>
+              {sms?.phase === "delivered"
+                ? `Message ${sms.messageId} delivered to ${lead.phone}.`
+                : `Template: ${sms?.template} · To: ${lead.name} (${lead.phone})`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {sms && (
+            <div className="space-y-3">
+              <div className="rounded border border-slds-border bg-slds-neutral-bg p-2 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-slds-ink-soft">From: <span className="text-slds-ink">+1 (888) AVIVA-CA</span></span>
+                  <span className="text-slds-ink-soft">CASL: <span className="text-emerald-600">✓ Verified</span></span>
+                </div>
+              </div>
+              <textarea
+                value={sms.body}
+                onChange={(e) => setSms({ ...sms, body: e.target.value })}
+                disabled={sms.phase !== "compose"}
+                rows={6}
+                className="w-full resize-none rounded border border-slds-border p-2 text-[12.5px] leading-relaxed outline-none focus:border-slds-blue disabled:bg-slds-neutral-bg"
+              />
+              <div className="flex items-center justify-between text-[11px] text-slds-ink-soft">
+                <span>{sms.body.length} chars · {Math.ceil(sms.body.length / 160)} segment(s)</span>
+                {sms.phase === "sending" && (
+                  <span className="flex items-center gap-1.5 text-slds-blue">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slds-blue" /> Sending via Twilio…
+                  </span>
+                )}
+                {sms.phase === "delivered" && (
+                  <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Delivered
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {sms?.phase === "compose" && (
+              <>
+                <button
+                  className="rounded border border-slds-border bg-white px-3 py-1.5 text-[12px] font-semibold text-slds-ink hover:bg-slds-neutral-bg"
+                  onClick={() => setSms(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="inline-flex items-center gap-1.5 rounded bg-slds-blue px-3 py-1.5 text-[12px] font-semibold text-white hover:brightness-110"
+                  onClick={sendSmsNow}
+                >
+                  <Send className="h-3 w-3" /> Send SMS
+                </button>
+              </>
+            )}
+            {sms?.phase === "sending" && (
+              <button disabled className="rounded bg-slds-blue/60 px-3 py-1.5 text-[12px] font-semibold text-white">
+                Sending…
+              </button>
+            )}
+            {sms?.phase === "delivered" && (
+              <button
+                className="rounded bg-slds-blue px-3 py-1.5 text-[12px] font-semibold text-white hover:brightness-110"
+                onClick={() => setSms(null)}
+              >
+                Close
+              </button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Call Summary modal */}
+      <Dialog open={!!callSummary} onOpenChange={(o) => !o && setCallSummary(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-emerald-600" /> Call Wrap-Up
+            </DialogTitle>
+            <DialogDescription>
+              Five9 call with {lead.name} ended. Log disposition before continuing.
+            </DialogDescription>
+          </DialogHeader>
+          {callSummary && (
+            <div className="space-y-2 rounded border border-slds-border bg-slds-neutral-bg p-3 text-[12px]">
+              <Row k="Contact" v={`${lead.name} · ${lead.phone}`} />
+              <Row k="Duration" v={formatDuration(callSummary.duration)} />
+              <Row k="Outcome" v={callSummary.outcome} />
+              <Row k="Recording" v={"REC-" + Math.random().toString(36).slice(2, 9).toUpperCase()} />
+              <div className="pt-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slds-ink-soft">Agent notes</div>
+                <textarea
+                  rows={3}
+                  defaultValue={
+                    callSummary.outcome === "Connected"
+                      ? "Customer confirmed interest in bundle quote. Will email revised pricing."
+                      : callSummary.outcome === "Voicemail"
+                      ? "Left voicemail referencing quote expiry. Will retry tomorrow AM."
+                      : "No answer. Scheduled callback for tomorrow 10:00 AM."
+                  }
+                  className="mt-1 w-full resize-none rounded border border-slds-border bg-white p-2 text-[12px] outline-none focus:border-slds-blue"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
             <button
               className="rounded bg-slds-blue px-3 py-1.5 text-[12px] font-semibold text-white hover:brightness-110"
               onClick={() => {
-                setConvertOpen(false);
-                toast.success("Lead converted", { description: "Opportunity created and bound in Guidewire." });
+                setCallSummary(null);
+                toast.success("Call disposition saved");
               }}
             >
-              Convert & Bind
+              Save & Close
             </button>
           </DialogFooter>
         </DialogContent>

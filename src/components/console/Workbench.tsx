@@ -33,6 +33,31 @@ import {
 
 type CallState = "idle" | "ringing" | "on-call" | "hold";
 
+type SmsCompose = {
+  template: string;
+  body: string;
+  phase: "compose" | "sending" | "delivered";
+  messageId?: string;
+};
+
+type ConvertPhase = "review" | "binding" | "done";
+
+type CallSummary = {
+  duration: number;
+  outcome: "Connected" | "No Answer" | "Voicemail";
+} | null;
+
+const TEMPLATE_BODIES: Record<string, string> = {
+  "Quote Expiry Reminder":
+    "Hi {firstName}, this is Sarah from Aviva Canada. Your home insurance quote {policyId} expires in 13 days at the rate of {premium}/yr. Reply YES to lock in this rate or call us at 1-800-555-0199. STOP to opt out.",
+  "Callback Confirmation":
+    "Hi {firstName}, confirming your callback with Aviva for tomorrow at 2:00 PM EST regarding quote {policyId}. Reply 1 to confirm, 2 to reschedule. STOP to opt out.",
+  "Bundle Offer — Home+Auto":
+    "Hi {firstName}, you qualify for our Home+Auto bundle: save $340/yr on top of quote {policyId}. Reply BUNDLE for details or call 1-800-555-0199. STOP to opt out.",
+  "Custom SMS":
+    "Hi {firstName}, this is Sarah from Aviva Canada following up on your home insurance quote {policyId}. Let me know if you have any questions. STOP to opt out.",
+};
+
 const FILTERS = ["All", "My Queue", "QC", "ON"] as const;
 
 export function Workbench() {

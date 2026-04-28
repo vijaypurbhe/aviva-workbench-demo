@@ -183,7 +183,7 @@ export function Workbench() {
     window.setTimeout(() => {
       setConvertPhase("done");
       appendHistory({
-        icon: "doc",
+        icon: "quote",
         title: "Lead Converted → Opportunity",
         sub: `Bound to Guidewire ${lead.policyId} · ${lead.quote.annualPremium}`,
         when: "Just now",
@@ -317,7 +317,7 @@ export function Workbench() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <ActionBtn tone="hot" icon={<MessageSquare className="h-3.5 w-3.5" />} onClick={() => sendSms("Custom SMS")}>
+                <ActionBtn tone="hot" icon={<MessageSquare className="h-3.5 w-3.5" />} onClick={() => openSms("Custom SMS")}>
                   Send SMS
                 </ActionBtn>
                 <ActionBtn tone="primary" icon={<Phone className="h-3.5 w-3.5" />} onClick={startCall}>
@@ -326,7 +326,7 @@ export function Workbench() {
                 <ActionBtn tone="ghost" icon={<Activity className="h-3.5 w-3.5" />} onClick={() => toast("Activity logged")}>
                   Log Activity
                 </ActionBtn>
-                <ActionBtn tone="ghost" icon={<CheckCircle2 className="h-3.5 w-3.5" />} onClick={() => setConvertOpen(true)}>
+                <ActionBtn tone="ghost" icon={<CheckCircle2 className="h-3.5 w-3.5" />} onClick={startConvert}>
                   Convert
                 </ActionBtn>
               </div>
@@ -373,8 +373,14 @@ export function Workbench() {
                 <span className="font-semibold">CTI Adapter — Sarah Kim (Agent)</span>
               </div>
               <span className="flex items-center gap-1.5 text-[11px]">
-                <span className={`h-2 w-2 rounded-full ${callState === "on-call" ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
-                {callState === "on-call" ? `On Call · ${formatDuration(callSeconds)}` : callState === "hold" ? "On Hold" : "Ready"}
+                <span className={`h-2 w-2 rounded-full ${callState === "on-call" ? "bg-amber-400 animate-pulse" : callState === "ringing" ? "bg-sky-400 animate-pulse" : "bg-emerald-400"}`} />
+                {callState === "on-call"
+                  ? `On Call · ${formatDuration(callSeconds)}`
+                  : callState === "ringing"
+                  ? "Ringing…"
+                  : callState === "hold"
+                  ? "On Hold"
+                  : "Ready"}
               </span>
             </div>
             <div className="bg-[oklch(0.22_0.03_250)] px-4 py-5 text-white">
@@ -519,7 +525,7 @@ export function Workbench() {
                     {t.label}
                   </div>
                   <button
-                    onClick={() => sendSms(t.label)}
+                    onClick={() => openSms(t.label)}
                     className="inline-flex items-center gap-1 rounded bg-slds-blue px-2 py-0.5 text-[11px] font-semibold text-white hover:brightness-110"
                   >
                     <Send className="h-3 w-3" /> Send

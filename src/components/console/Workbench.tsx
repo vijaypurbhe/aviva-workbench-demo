@@ -204,11 +204,20 @@ export function Workbench() {
 
   const openSms = (template: string) => {
     const firstName = lead.name.split(" ")[0];
-    const body = (TEMPLATE_BODIES[template] ?? TEMPLATE_BODIES["Custom SMS"])
+    const fallback = (TEMPLATE_BODIES[template] ?? TEMPLATE_BODIES["Custom SMS"])
       .replace("{firstName}", firstName)
       .replace("{policyId}", lead.policyId)
       .replace("{premium}", lead.quote.annualPremium);
-    setSms({ template, body, phase: "compose" });
+    setSms({ template, body: fallback, phase: "compose" });
+    // Stream an AI-drafted, locale-aware body that replaces the fallback live.
+    smsAi.stream({
+      action: "draft_sms",
+      lead,
+      extra: { template },
+      onDelta: (_c, full) => {
+        setSms((s) => (s && s.phase === "compose" ? { ...s, body: full } : s));
+      },
+    });
   };
 
   const sendSmsNow = () => {

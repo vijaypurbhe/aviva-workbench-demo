@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { LEADS, QUEUE, type Lead } from "@/data/mock";
 import { toast } from "sonner";
+import { useAviAi, tryParseJson } from "@/hooks/useAviAi";
 import {
   Search,
   Phone,
@@ -77,6 +78,66 @@ export function Workbench() {
 
   const lead = LEADS.find((l) => l.id === activeTab) ?? LEADS[0];
 
+  // ── AI: per-lead Einstein score, NBA recommendations, Quote Assist ──
+  type AiScore = { score: number; tier: "HOT" | "WARM" | "COLD"; reasons: string[] };
+  type AiRec = { label: string; title: string; body: string; cta: string; confidence: number; tone: "primary" | "warn" };
+  type AiQA = { lever: string; change: string; impact: string; delta: string };
+  const [aiScores, setAiScores] = useState<Record<string, AiScore>>({});
+  const [aiRecs, setAiRecs] = useState<Record<string, AiRec[]>>({});
+  const [aiQA, setAiQA] = useState<Record<string, AiQA[]>>({});
+  const [aiQALoading, setAiQALoading] = useState(false);
+  const scoreAi = useAviAi();
+  const nbaAi = useAviAi();
+  const qaAi = useAviAi();
+  const smsAi = useAviAi();
+  const wrapAi = useAviAi();
+  const [wrapText, setWrapText] = useState("");
+
+  // Trigger score + NBA when the active lead changes (cache per lead).
+  useEffect(() => {
+    if (!aiScores[lead.id]) {
+      scoreAi.stream({
+        action: "score",
+        lead,
+        onDone: (full) => {
+          const j = tryParseJson<AiScore>(full);
+          if (j && typeof j.score === "number") {
+            setAiScores((p) => ({ ...p, [lead.id]: j }));
+          }
+        },
+      });
+    }
+    if (!aiRecs[lead.id]) {
+      nbaAi.stream({
+        action: "nba",
+        lead,
+        onDone: (full) => {
+          const j = tryParseJson<{ recommendations: AiRec[] }>(full);
+          if (j?.recommendations?.length) {
+            setAiRecs((p) => ({ ...p, [lead.id]: j.recommendations }));
+          }
+        },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id]);
+
+  const runQuoteAssist = () => {
+    setAiQALoading(true);
+    qaAi.stream({
+      action: "quote_assist",
+      lead,
+      onDone: (full) => {
+        const j = tryParseJson<{ suggestions: AiQA[] }>(full);
+        if (j?.suggestions?.length) {
+          setAiQA((p) => ({ ...p, [lead.id]: j.suggestions }));
+        }
+        setAiQALoading(false);
+      },
+      onError: () => setAiQALoading(false),
+    });
+  };
+
   // Call timer
   const timerRef = useRef<number | null>(null);
   useEffect(() => {
@@ -133,6 +194,13 @@ export function Workbench() {
     setCallState("idle");
     setCallSeconds(0);
     setCallSummary({ duration, outcome });
+    setWrapText("");
+    wrapAi.stream({
+      action: "summarize_call",
+      lead,
+      extra: { duration, outcome, notes: "Agent on Aviva Service Console." },
+      onDelta: (_c, full) => setWrapText(full),
+    });
     appendHistory({
       icon: "call",
       title: `Outbound Call — ${outcome}`,
@@ -143,11 +211,20 @@ export function Workbench() {
 
   const openSms = (template: string) => {
     const firstName = lead.name.split(" ")[0];
-    const body = (TEMPLATE_BODIES[template] ?? TEMPLATE_BODIES["Custom SMS"])
+    const fallback = (TEMPLATE_BODIES[template] ?? TEMPLATE_BODIES["Custom SMS"])
       .replace("{firstName}", firstName)
       .replace("{policyId}", lead.policyId)
       .replace("{premium}", lead.quote.annualPremium);
-    setSms({ template, body, phase: "compose" });
+    setSms({ template, body: fallback, phase: "compose" });
+    // Stream an AI-drafted, locale-aware body that replaces the fallback live.
+    smsAi.stream({
+      action: "draft_sms",
+      lead,
+      extra: { template },
+      onDelta: (_c, full) => {
+        setSms((s) => (s && s.phase === "compose" ? { ...s, body: full } : s));
+      },
+    });
   };
 
   const sendSmsNow = () => {
@@ -336,7 +413,14 @@ export function Workbench() {
               <Field label="Email" value={lead.email} link />
               <Field label="Province" value={lead.province === "QC" ? "QC – Montréal" : lead.province === "ON" ? "ON – Toronto" : lead.province} />
               <Field label="GW Policy #" value={lead.policyId} link />
-              <Field label="Einstein Score" value={`${lead.score} / 100`} />
+              <Field
+                label={scoreAi.streaming && !aiScores[lead.id] ? "Einstein Score · scoring…" : "Einstein Score"}
+                value={
+                  aiScores[lead.id]
+                    ? `${aiScores[lead.id].score} / 100 · ${aiScores[lead.id].tier}`
+                    : `${lead.score} / 100`
+                }
+              />
               <Field label="CASL Consent" value={lead.caslVerified ? "✓ Verified" : "Pending"} success={lead.caslVerified} />
             </div>
           </section>
@@ -365,7 +449,53 @@ export function Workbench() {
             </div>
           </section>
 
-          {/* Five9 CTI */}
+          {/* Quote Assist Agent (live AI) */}
+          <section className="mt-4 overflow-hidden rounded border border-slds-border bg-white">
+            <div className="flex items-center justify-between border-b border-slds-border px-4 py-2.5">
+              <div className="flex items-center gap-2 text-[13px] font-semibold text-slds-ink">
+                <Sparkles className="h-4 w-4 text-violet-600" />
+                Quote Assist Agent
+                <span className="rounded bg-gradient-to-r from-violet-500 to-blue-500 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-white">LIVE AI</span>
+              </div>
+              <button
+                onClick={runQuoteAssist}
+                disabled={qaAi.streaming || aiQALoading}
+                className="inline-flex items-center gap-1 rounded bg-slds-blue px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-110 disabled:opacity-60"
+              >
+                <Zap className="h-3 w-3" />
+                {qaAi.streaming ? "Analyzing…" : aiQA[lead.id] ? "Re-run" : "Suggest adjustments"}
+              </button>
+            </div>
+            <div className="p-3">
+              {!aiQA[lead.id] && !qaAi.streaming && (
+                <div className="rounded border border-dashed border-slds-border bg-slds-neutral-bg p-3 text-[12px] text-slds-ink-soft">
+                  Click <strong>Suggest adjustments</strong> to have the AI agent recommend deductible, bundle, or coverage tweaks to maximize bind probability.
+                </div>
+              )}
+              {qaAi.streaming && !aiQA[lead.id] && (
+                <pre className="max-h-40 overflow-y-auto rounded border border-slds-border bg-slds-neutral-bg p-2 text-[11px] leading-snug text-slds-ink-soft whitespace-pre-wrap">
+                  {qaAi.text || "Thinking…"}
+                </pre>
+              )}
+              {aiQA[lead.id] && (
+                <div className="grid grid-cols-1 gap-2">
+                  {aiQA[lead.id].map((s, i) => (
+                    <div key={i} className="rounded border border-slds-border bg-slds-neutral-bg p-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-700">{s.lever}</div>
+                          <div className="mt-0.5 text-[12.5px] font-semibold text-slds-ink">{s.change}</div>
+                          <div className="mt-1 text-[11px] text-slds-ink-soft">{s.impact}</div>
+                        </div>
+                        <span className="shrink-0 rounded bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">{s.delta}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
           <section className="mt-4 overflow-hidden rounded border border-slds-border bg-white">
             <div className="flex items-center justify-between bg-five9 px-4 py-2 text-white">
               <div className="flex items-center gap-3 text-[13px]">
@@ -452,13 +582,16 @@ export function Workbench() {
             <div className="flex items-center justify-between border-b border-slds-border px-3 py-2">
               <div className="flex items-center gap-2 text-[13px] font-semibold text-slds-ink">
                 <Sparkles className="h-4 w-4 text-slds-blue" /> Einstein Next Best Action
+                {nbaAi.streaming && (
+                  <span className="text-[10px] font-normal text-slds-ink-soft">· streaming…</span>
+                )}
               </div>
               <span className="rounded bg-gradient-to-r from-violet-500 to-blue-500 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white">
-                AI
+                LIVE AI
               </span>
             </div>
             <div className="space-y-2 p-2">
-              {lead.recommendations.map((r, i) => (
+              {(aiRecs[lead.id] ?? lead.recommendations).map((r, i) => (
                 <div
                   key={i}
                   className={[
@@ -484,7 +617,11 @@ export function Workbench() {
                   </div>
                   <p className="mt-2 text-[11px] leading-snug text-slds-ink-soft">{r.body}</p>
                   <button
-                    onClick={() => (r.cta === "Call Now" ? startCall() : openSms("Bundle Offer — Home+Auto"))}
+                    onClick={() => {
+                      if (r.cta === "Call Now") startCall();
+                      else if (r.cta === "Send SMS" || r.cta === "Offer Bundle") openSms("Bundle Offer — Home+Auto");
+                      else if (r.cta === "Schedule CB") toast("Callback scheduled");
+                    }}
                     className={[
                       "mt-2 inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] font-semibold",
                       r.tone === "primary"
@@ -497,6 +634,11 @@ export function Workbench() {
                   </button>
                 </div>
               ))}
+              {nbaAi.streaming && !aiRecs[lead.id] && (
+                <div className="rounded border border-dashed border-slds-border bg-slds-neutral-bg p-2 text-[10.5px] text-slds-ink-soft">
+                  Einstein is generating recommendations from CRM history, quote, and channel signals…
+                </div>
+              )}
             </div>
           </div>
 
@@ -772,18 +914,18 @@ export function Workbench() {
               <Row k="Outcome" v={callSummary.outcome} />
               <Row k="Recording" v={"REC-" + Math.random().toString(36).slice(2, 9).toUpperCase()} />
               <div className="pt-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slds-ink-soft">Agent notes</div>
-                <textarea
-                  rows={3}
-                  defaultValue={
-                    callSummary.outcome === "Connected"
-                      ? "Customer confirmed interest in bundle quote. Will email revised pricing."
-                      : callSummary.outcome === "Voicemail"
-                      ? "Left voicemail referencing quote expiry. Will retry tomorrow AM."
-                      : "No answer. Scheduled callback for tomorrow 10:00 AM."
-                  }
-                  className="mt-1 w-full resize-none rounded border border-slds-border bg-white p-2 text-[12px] outline-none focus:border-slds-blue"
-                />
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slds-ink-soft">
+                    GenAI wrap-up {lead.province === "QC" ? "(EN + FR)" : "(EN)"}
+                  </div>
+                  <span className="flex items-center gap-1 text-[10px] text-violet-700">
+                    <Sparkles className="h-3 w-3" />
+                    {wrapAi.streaming ? "streaming…" : wrapText ? "ready" : "preparing…"}
+                  </span>
+                </div>
+                <div className="mt-1 max-h-48 overflow-y-auto rounded border border-slds-border bg-white p-2 text-[12px] leading-relaxed whitespace-pre-wrap text-slds-ink">
+                  {wrapText || (wrapAi.streaming ? "Generating bilingual summary…" : "—")}
+                </div>
               </div>
             </div>
           )}

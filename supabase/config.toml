@@ -1,0 +1,4 @@
+project_id = "wvnavqvpffnciddewjbi"
+
+[functions.aviva-ai]
+verify_jwt = false

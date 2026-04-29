@@ -78,6 +78,66 @@ export function Workbench() {
 
   const lead = LEADS.find((l) => l.id === activeTab) ?? LEADS[0];
 
+  // ── AI: per-lead Einstein score, NBA recommendations, Quote Assist ──
+  type AiScore = { score: number; tier: "HOT" | "WARM" | "COLD"; reasons: string[] };
+  type AiRec = { label: string; title: string; body: string; cta: string; confidence: number; tone: "primary" | "warn" };
+  type AiQA = { lever: string; change: string; impact: string; delta: string };
+  const [aiScores, setAiScores] = useState<Record<string, AiScore>>({});
+  const [aiRecs, setAiRecs] = useState<Record<string, AiRec[]>>({});
+  const [aiQA, setAiQA] = useState<Record<string, AiQA[]>>({});
+  const [aiQALoading, setAiQALoading] = useState(false);
+  const scoreAi = useAviAi();
+  const nbaAi = useAviAi();
+  const qaAi = useAviAi();
+  const smsAi = useAviAi();
+  const wrapAi = useAviAi();
+  const [wrapText, setWrapText] = useState("");
+
+  // Trigger score + NBA when the active lead changes (cache per lead).
+  useEffect(() => {
+    if (!aiScores[lead.id]) {
+      scoreAi.stream({
+        action: "score",
+        lead,
+        onDone: (full) => {
+          const j = tryParseJson<AiScore>(full);
+          if (j && typeof j.score === "number") {
+            setAiScores((p) => ({ ...p, [lead.id]: j }));
+          }
+        },
+      });
+    }
+    if (!aiRecs[lead.id]) {
+      nbaAi.stream({
+        action: "nba",
+        lead,
+        onDone: (full) => {
+          const j = tryParseJson<{ recommendations: AiRec[] }>(full);
+          if (j?.recommendations?.length) {
+            setAiRecs((p) => ({ ...p, [lead.id]: j.recommendations }));
+          }
+        },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id]);
+
+  const runQuoteAssist = () => {
+    setAiQALoading(true);
+    qaAi.stream({
+      action: "quote_assist",
+      lead,
+      onDone: (full) => {
+        const j = tryParseJson<{ suggestions: AiQA[] }>(full);
+        if (j?.suggestions?.length) {
+          setAiQA((p) => ({ ...p, [lead.id]: j.suggestions }));
+        }
+        setAiQALoading(false);
+      },
+      onError: () => setAiQALoading(false),
+    });
+  };
+
   // Call timer
   const timerRef = useRef<number | null>(null);
   useEffect(() => {

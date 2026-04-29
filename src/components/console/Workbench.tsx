@@ -413,7 +413,14 @@ export function Workbench() {
               <Field label="Email" value={lead.email} link />
               <Field label="Province" value={lead.province === "QC" ? "QC – Montréal" : lead.province === "ON" ? "ON – Toronto" : lead.province} />
               <Field label="GW Policy #" value={lead.policyId} link />
-              <Field label="Einstein Score" value={`${lead.score} / 100`} />
+              <Field
+                label={scoreAi.streaming && !aiScores[lead.id] ? "Einstein Score · scoring…" : "Einstein Score"}
+                value={
+                  aiScores[lead.id]
+                    ? `${aiScores[lead.id].score} / 100 · ${aiScores[lead.id].tier}`
+                    : `${lead.score} / 100`
+                }
+              />
               <Field label="CASL Consent" value={lead.caslVerified ? "✓ Verified" : "Pending"} success={lead.caslVerified} />
             </div>
           </section>

@@ -194,6 +194,13 @@ export function Workbench() {
     setCallState("idle");
     setCallSeconds(0);
     setCallSummary({ duration, outcome });
+    setWrapText("");
+    wrapAi.stream({
+      action: "summarize_call",
+      lead,
+      extra: { duration, outcome, notes: "Agent on Aviva Service Console." },
+      onDelta: (_c, full) => setWrapText(full),
+    });
     appendHistory({
       icon: "call",
       title: `Outbound Call — ${outcome}`,

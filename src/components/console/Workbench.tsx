@@ -449,7 +449,53 @@ export function Workbench() {
             </div>
           </section>
 
-          {/* Five9 CTI */}
+          {/* Quote Assist Agent (live AI) */}
+          <section className="mt-4 overflow-hidden rounded border border-slds-border bg-white">
+            <div className="flex items-center justify-between border-b border-slds-border px-4 py-2.5">
+              <div className="flex items-center gap-2 text-[13px] font-semibold text-slds-ink">
+                <Sparkles className="h-4 w-4 text-violet-600" />
+                Quote Assist Agent
+                <span className="rounded bg-gradient-to-r from-violet-500 to-blue-500 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-white">LIVE AI</span>
+              </div>
+              <button
+                onClick={runQuoteAssist}
+                disabled={qaAi.streaming || aiQALoading}
+                className="inline-flex items-center gap-1 rounded bg-slds-blue px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-110 disabled:opacity-60"
+              >
+                <Zap className="h-3 w-3" />
+                {qaAi.streaming ? "Analyzing…" : aiQA[lead.id] ? "Re-run" : "Suggest adjustments"}
+              </button>
+            </div>
+            <div className="p-3">
+              {!aiQA[lead.id] && !qaAi.streaming && (
+                <div className="rounded border border-dashed border-slds-border bg-slds-neutral-bg p-3 text-[12px] text-slds-ink-soft">
+                  Click <strong>Suggest adjustments</strong> to have the AI agent recommend deductible, bundle, or coverage tweaks to maximize bind probability.
+                </div>
+              )}
+              {qaAi.streaming && !aiQA[lead.id] && (
+                <pre className="max-h-40 overflow-y-auto rounded border border-slds-border bg-slds-neutral-bg p-2 text-[11px] leading-snug text-slds-ink-soft whitespace-pre-wrap">
+                  {qaAi.text || "Thinking…"}
+                </pre>
+              )}
+              {aiQA[lead.id] && (
+                <div className="grid grid-cols-1 gap-2">
+                  {aiQA[lead.id].map((s, i) => (
+                    <div key={i} className="rounded border border-slds-border bg-slds-neutral-bg p-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-700">{s.lever}</div>
+                          <div className="mt-0.5 text-[12.5px] font-semibold text-slds-ink">{s.change}</div>
+                          <div className="mt-1 text-[11px] text-slds-ink-soft">{s.impact}</div>
+                        </div>
+                        <span className="shrink-0 rounded bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">{s.delta}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
           <section className="mt-4 overflow-hidden rounded border border-slds-border bg-white">
             <div className="flex items-center justify-between bg-five9 px-4 py-2 text-white">
               <div className="flex items-center gap-3 text-[13px]">

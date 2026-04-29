@@ -914,18 +914,18 @@ export function Workbench() {
               <Row k="Outcome" v={callSummary.outcome} />
               <Row k="Recording" v={"REC-" + Math.random().toString(36).slice(2, 9).toUpperCase()} />
               <div className="pt-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slds-ink-soft">Agent notes</div>
-                <textarea
-                  rows={3}
-                  defaultValue={
-                    callSummary.outcome === "Connected"
-                      ? "Customer confirmed interest in bundle quote. Will email revised pricing."
-                      : callSummary.outcome === "Voicemail"
-                      ? "Left voicemail referencing quote expiry. Will retry tomorrow AM."
-                      : "No answer. Scheduled callback for tomorrow 10:00 AM."
-                  }
-                  className="mt-1 w-full resize-none rounded border border-slds-border bg-white p-2 text-[12px] outline-none focus:border-slds-blue"
-                />
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slds-ink-soft">
+                    GenAI wrap-up {lead.province === "QC" ? "(EN + FR)" : "(EN)"}
+                  </div>
+                  <span className="flex items-center gap-1 text-[10px] text-violet-700">
+                    <Sparkles className="h-3 w-3" />
+                    {wrapAi.streaming ? "streaming…" : wrapText ? "ready" : "preparing…"}
+                  </span>
+                </div>
+                <div className="mt-1 max-h-48 overflow-y-auto rounded border border-slds-border bg-white p-2 text-[12px] leading-relaxed whitespace-pre-wrap text-slds-ink">
+                  {wrapText || (wrapAi.streaming ? "Generating bilingual summary…" : "—")}
+                </div>
               </div>
             </div>
           )}

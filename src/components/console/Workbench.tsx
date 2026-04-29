@@ -582,13 +582,16 @@ export function Workbench() {
             <div className="flex items-center justify-between border-b border-slds-border px-3 py-2">
               <div className="flex items-center gap-2 text-[13px] font-semibold text-slds-ink">
                 <Sparkles className="h-4 w-4 text-slds-blue" /> Einstein Next Best Action
+                {nbaAi.streaming && (
+                  <span className="text-[10px] font-normal text-slds-ink-soft">· streaming…</span>
+                )}
               </div>
               <span className="rounded bg-gradient-to-r from-violet-500 to-blue-500 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white">
-                AI
+                LIVE AI
               </span>
             </div>
             <div className="space-y-2 p-2">
-              {lead.recommendations.map((r, i) => (
+              {(aiRecs[lead.id] ?? lead.recommendations).map((r, i) => (
                 <div
                   key={i}
                   className={[
@@ -614,7 +617,11 @@ export function Workbench() {
                   </div>
                   <p className="mt-2 text-[11px] leading-snug text-slds-ink-soft">{r.body}</p>
                   <button
-                    onClick={() => (r.cta === "Call Now" ? startCall() : openSms("Bundle Offer — Home+Auto"))}
+                    onClick={() => {
+                      if (r.cta === "Call Now") startCall();
+                      else if (r.cta === "Send SMS" || r.cta === "Offer Bundle") openSms("Bundle Offer — Home+Auto");
+                      else if (r.cta === "Schedule CB") toast("Callback scheduled");
+                    }}
                     className={[
                       "mt-2 inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] font-semibold",
                       r.tone === "primary"
@@ -627,6 +634,11 @@ export function Workbench() {
                   </button>
                 </div>
               ))}
+              {nbaAi.streaming && !aiRecs[lead.id] && (
+                <div className="rounded border border-dashed border-slds-border bg-slds-neutral-bg p-2 text-[10.5px] text-slds-ink-soft">
+                  Einstein is generating recommendations from CRM history, quote, and channel signals…
+                </div>
+              )}
             </div>
           </div>
 
